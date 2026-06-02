@@ -1,1 +1,43 @@
+name: Actualizar datos DATAVE
 
+# Robot que actualiza los datos de la plataforma.
+# Se ejecuta lunes a viernes a las 9am hora de Caracas (UTC-4).
+# 9:00 Caracas = 13:00 UTC
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ejecutar el script de actualización
+        run: node scripts/update-data.js
+        env:
+          COTIZAVE_API_KEY: ${{ secrets.COTIZAVE_API_KEY }}
+
+      - name: Hacer commit de los datos nuevos (si cambiaron)
+        run: |
+          git config user.name "DATAVE Bot"
+          git config user.email "bot@dateve.local"
+          git add data/data.json
+          if git diff --staged --quiet; then
+            echo "Sin cambios: los datos estan iguales."
+          else
+            git commit -m "Datos actualizados - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "Datos publicados."
+          fi
